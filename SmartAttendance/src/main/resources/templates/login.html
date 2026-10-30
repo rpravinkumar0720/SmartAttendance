@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Attendance | Sign In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <div class="auth-shell">
+    <aside class="auth-aside">
+      <div class="auth-aside-top">
+        <div class="brand">
+          <div class="logo">SA</div>
+          <h1>Smart Attendance</h1>
+        </div>
+        <h2>Camera-based attendance,<br>logged automatically.</h2>
+        <p>Faculty run a session with a single camera scan. Students see their record update the moment it's recognized &mdash; no roll calls, no paper registers.</p>
+
+        <div class="auth-stat-list">
+          <div class="item"><span class="dot"></span><span>Face recognition marks presence in real time during class</span></div>
+          <div class="item"><span class="dot"></span><span>Every class keeps a running attendance percentage per student</span></div>
+          <div class="item"><span class="dot"></span><span>Admins manage rosters, sessions and records from one dashboard</span></div>
+        </div>
+      </div>
+      <div class="auth-aside-bottom">Chennai Institute of Technology &middot; Department of CSE</div>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-form-panel">
+        <div class="brand" style="margin-bottom:24px;">
+          <div class="logo">SA</div>
+          <div>
+            <h1>Smart Attendance</h1>
+            <span class="brand-subtitle">Attendance &amp; Recognition Portal</span>
+          </div>
+        </div>
+        <span class="eyebrow">Sign In</span>
+        <p class="subtitle">Use your registered email and password to continue.</p>
+
+        <div class="error-msg" th:if="${param.error}">Invalid email or password. Please try again.</div>
+        <div class="error-msg" th:if="${param.unverified}">Please verify your email with the OTP we sent you before signing in.</div>
+        <div class="success-msg" th:if="${param.logout}">You have been logged out successfully.</div>
+
+        <form th:action="@{/login}" method="post">
+          <label for="username">Email Address</label>
+          <input type="email" id="username" name="username" placeholder="you@college.edu" required autofocus autocomplete="email">
+
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+
+          <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+        </form>
+
+        <p class="status-text">
+          <a th:href="@{/forgot-password}">Forgot password?</a> &middot;
+          New student? <a th:href="@{/signup}">Sign up here</a>
+        </p>
+        <p class="status-text" style="font-size:12px; color: var(--ink-faint);">Default admin: r.pravinkumar0720@gmail.com / Pravinkumar@1234<br>(change this after first login)</p>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

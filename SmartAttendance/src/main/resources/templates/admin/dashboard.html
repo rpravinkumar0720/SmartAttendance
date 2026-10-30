@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Smart Attendance</h1>
+        <span class="brand-subtitle">Faculty &amp; Admin Console</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="pill" th:text="${admin.fullName}">Admin</span>
+      <a th:href="@{/admin/join-requests}" class="btn btn-outline btn-sm" th:classappend="${pendingRequestCount > 0} ? 'pill-amber' : ''">
+        <span>Requests</span>
+        <span th:if="${pendingRequestCount > 0}" class="pill-counter" th:text="${pendingRequestCount}">0</span>
+      </a>
+      <form th:action="@{/logout}" method="post" style="display:inline">
+        <button type="submit" class="btn btn-outline btn-sm">Logout</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="glass stat-card">
+      <div class="num" th:text="${#lists.size(classes)}">0</div>
+      <div class="label">Classes Created</div>
+    </div>
+    <div class="glass stat-card">
+      <div class="num" th:text="${totalStudents}">0</div>
+      <div class="label">Registered Students</div>
+    </div>
+    <div class="glass stat-card">
+      <div class="num-status">Active</div>
+      <div class="label">Face Recognition AI</div>
+    </div>
+  </div>
+
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <h2>Your Classes</h2>
+        <span style="font-size: 13.5px; color: var(--ink-muted);">Manage rosters, track session logs, and run camera attendance.</span>
+      </div>
+      <a th:href="@{/admin/class/create}" class="btn btn-primary btn-sm">+ Create Class</a>
+    </div>
+
+    <div th:if="${#lists.isEmpty(classes)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+      </svg>
+      <h3>No classes created yet</h3>
+      <p>Create your first class to generate a join code and start taking camera attendance.</p>
+    </div>
+
+    <div class="grid-cards" th:unless="${#lists.isEmpty(classes)}">
+      <a th:each="c : ${classes}" th:href="@{'/admin/class/' + ${c.id}}" class="glass class-card">
+        <div>
+          <div class="code" th:text="'CODE: ' + ${c.classCode}">CODE ABC123</div>
+          <h3 th:text="${c.className}" style="margin-top: 6px;">Class Name</h3>
+          <div class="meta" th:text="${c.subject}">Subject</div>
+        </div>
+        <div style="margin-top: 18px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-glass); padding-top: 12px;">
+          <span style="font-size: 12.5px; color: var(--ink-muted);">View class roster &rarr;</span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

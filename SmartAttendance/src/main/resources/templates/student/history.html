@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance History | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Attendance History</h1>
+        <span class="brand-subtitle">Session Attendance Record</span>
+      </div>
+    </div>
+    <a th:href="@{/student/dashboard}" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+  </div>
+
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <h2>Your Attendance Sessions</h2>
+        <span style="font-size: 13.5px; color: var(--ink-muted);">Detailed breakdown of all scanned class sessions.</span>
+      </div>
+    </div>
+
+    <div class="table-container" th:unless="${#lists.isEmpty(records)}">
+      <table>
+        <thead>
+          <tr>
+            <th>Class Name</th>
+            <th>Date &amp; Time</th>
+            <th class="text-right">Attendance Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="r : ${records}">
+            <td th:text="${r.session.classRoom.className}" style="font-weight: 500;">Class</td>
+            <td class="mono" th:text="${#temporals.format(r.session.sessionTime, 'dd MMM yyyy, hh:mm a')}">Date</td>
+            <td class="text-right">
+              <span th:if="${r.status.name() == 'PRESENT'}" class="badge badge-present">Present</span>
+              <span th:if="${r.status.name() == 'ABSENT'}" class="badge badge-absent">Absent</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${#lists.isEmpty(records)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3>No attendance records yet</h3>
+      <p>Your session logs will appear here once your instructor runs attendance scans.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

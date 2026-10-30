@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Join Requests | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Join Requests</h1>
+        <span class="brand-subtitle">Student Class Enrollment Requests</span>
+      </div>
+    </div>
+    <a th:href="@{/admin/dashboard}" class="btn btn-outline btn-sm">&larr; Dashboard</a>
+  </div>
+
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <h2>Pending Student Requests</h2>
+        <span style="font-size: 13.5px; color: var(--ink-muted);">Review and approve students who submitted a class join code.</span>
+      </div>
+      <span class="pill pill-amber" th:text="${#lists.size(requests)} + ' waiting'">0 waiting</span>
+    </div>
+
+    <div th:if="${#lists.isEmpty(requests)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3>All caught up!</h3>
+      <p>No pending join requests right now. When a student submits a class code, their request will appear here for review.</p>
+    </div>
+
+    <div class="table-container" th:unless="${#lists.isEmpty(requests)}">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Roll Number</th>
+            <th>Email</th>
+            <th>Target Class</th>
+            <th>Requested At</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="r : ${requests}">
+            <td th:text="${r.student.fullName}" style="font-weight: 500;">Name</td>
+            <td class="mono" th:text="${r.rollNumber}">Roll</td>
+            <td th:text="${r.student.email}">Email</td>
+            <td>
+              <span th:text="${r.classRoom.className}" style="font-weight: 500;">Class</span>
+              <div class="meta" style="color: var(--ink-muted); font-size: 12px; margin-top: 2px;" th:text="${r.classRoom.subject}">Subject</div>
+            </td>
+            <td class="mono" th:text="${#temporals.format(r.requestedAt, 'dd MMM, hh:mm a')}">Date</td>
+            <td>
+              <div class="table-actions" style="justify-content: flex-end;">
+                <form th:action="@{'/admin/join-requests/' + ${r.id} + '/approve'}" method="post">
+                  <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                </form>
+                <form th:action="@{'/admin/join-requests/' + ${r.id} + '/reject'}" method="post">
+                  <button type="submit" class="btn btn-outline btn-sm">Reject</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

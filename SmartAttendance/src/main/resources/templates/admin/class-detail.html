@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title th:text="${classRoom.className} + ' | Smart Attendance'">Class</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1 th:text="${classRoom.className}">Class</h1>
+        <span class="brand-subtitle" th:text="${classRoom.subject}">Subject</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <a th:href="@{'/admin/class/' + ${classRoom.id} + '/export/csv'}" class="btn btn-outline btn-sm">
+        📥 Export Class CSV
+      </a>
+      <span class="pill" th:text="'CODE: ' + ${classRoom.classCode}">CODE</span>
+      <a th:href="@{/admin/dashboard}" class="btn btn-outline btn-sm">&larr; Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Pending Join Requests Banner/Card -->
+  <div class="glass card" th:unless="${#lists.isEmpty(pendingRequests)}" style="border-left: 3px solid var(--amber);">
+    <div class="section-head">
+      <div>
+        <h2>Pending Join Requests</h2>
+        <span style="font-size: 13px; color: var(--ink-muted);">Students waiting for approval to join this class.</span>
+      </div>
+      <span class="pill pill-amber" th:text="${#lists.size(pendingRequests)} + ' pending'">0 pending</span>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Roll Number</th>
+            <th>Email</th>
+            <th>Requested At</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="r : ${pendingRequests}">
+            <td th:text="${r.student.fullName}" style="font-weight: 500;">Name</td>
+            <td class="mono" th:text="${r.rollNumber}">Roll</td>
+            <td th:text="${r.student.email}">Email</td>
+            <td class="mono" th:text="${#temporals.format(r.requestedAt, 'dd MMM, hh:mm a')}">Date</td>
+            <td>
+              <div class="table-actions" style="justify-content: flex-end;">
+                <form th:action="@{'/admin/join-requests/' + ${r.id} + '/approve'}" method="post">
+                  <input type="hidden" name="redirect" th:value="@{'/admin/class/' + ${classRoom.id}}">
+                  <button type="submit" class="btn btn-success btn-sm">Accept</button>
+                </form>
+                <form th:action="@{'/admin/join-requests/' + ${r.id} + '/reject'}" method="post">
+                  <input type="hidden" name="redirect" th:value="@{'/admin/class/' + ${classRoom.id}}">
+                  <button type="submit" class="btn btn-outline btn-sm">Reject</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Main Class Roster -->
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow" th:text="'CODE ' + ${classRoom.classCode}">CODE</div>
+        <h2 th:text="${classRoom.subject} + ' · Student Roster'">Subject · Student Roster</h2>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap: wrap;">
+        <button id="filterAllBtn" class="btn btn-primary btn-sm" onclick="filterRoster('all')">
+          All Students (<span th:text="${#lists.size(enrollments)}">0</span>)
+        </button>
+        <button id="filterAtRiskBtn" class="btn btn-outline btn-sm" onclick="filterRoster('at-risk')" th:classappend="${atRiskCount > 0} ? 'status-pill-amber' : ''">
+          ⚠️ At-Risk &lt;75% (<span th:text="${atRiskCount}">0</span>)
+        </button>
+        <a th:href="@{'/admin/class/' + ${classRoom.id} + '/add-student'}" class="btn btn-outline btn-sm">+ Add Student</a>
+        <a th:href="@{'/admin/class/' + ${classRoom.id} + '/take-attendance'}" class="btn btn-primary btn-sm">Take Attendance Scan</a>
+      </div>
+    </div>
+
+    <div th:if="${param.added}" class="success-msg">Student added to class roster successfully.</div>
+
+    <div class="table-container" th:unless="${#lists.isEmpty(enrollments)}">
+      <table id="rosterTable">
+        <thead>
+          <tr>
+            <th style="width: 50px;">Photo</th>
+            <th>Name</th>
+            <th>Roll Number</th>
+            <th>Email</th>
+            <th>Attendance %</th>
+            <th>Face Status</th>
+            <th class="text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="e : ${enrollments}" 
+              class="roster-row" 
+              th:data-atrisk="${studentPercentages.get(e.student.id) != null and studentPercentages.get(e.student.id) < 75 and !#lists.isEmpty(sessions)}">
+            <td>
+              <img th:if="${e.student.photoBase64}" class="avatar" th:src="${e.student.photoBase64}" alt="Student Photo"/>
+              <div th:unless="${e.student.photoBase64}" class="avatar-placeholder" th:text="${#strings.substring(e.student.fullName,0,1)}">?</div>
+            </td>
+            <td th:text="${e.student.fullName}" style="font-weight: 500;">Name</td>
+            <td class="mono" th:text="${e.student.rollNumber}">Roll</td>
+            <td th:text="${e.student.email}">Email</td>
+            <td>
+              <div th:if="${#lists.isEmpty(sessions)}" style="color: var(--ink-faint); font-size: 13px;">No sessions yet</div>
+              <div th:unless="${#lists.isEmpty(sessions)}" style="display: flex; align-items: center; gap: 8px;">
+                <span class="mono" style="font-weight: 700; font-size: 13.5px;" th:text="${studentPercentages.get(e.student.id)} + '%'">0%</span>
+                <span th:if="${studentPercentages.get(e.student.id) < 75}" class="badge badge-pending" style="font-size: 10.5px;">At Risk</span>
+                <span th:if="${studentPercentages.get(e.student.id) >= 75}" class="badge badge-present" style="font-size: 10.5px;">Good</span>
+              </div>
+            </td>
+            <td>
+              <span th:if="${e.student.faceEnrolled}" class="badge badge-present">Face Enrolled</span>
+              <span th:unless="${e.student.faceEnrolled}" class="badge badge-pending">Not Enrolled</span>
+            </td>
+            <td class="text-right">
+              <a th:href="@{'/admin/student/' + ${e.student.id} + '/enroll-face'(classId=${classRoom.id})}" class="btn btn-outline btn-sm">
+                <span th:text="${e.student.faceEnrolled} ? 'Re-scan Face' : 'Enroll Face'">Enroll Face</span>
+              </a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${#lists.isEmpty(enrollments)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      <h3>No students in this class yet</h3>
+      <p>Click "Add Student" above or share the class code <strong th:text="${classRoom.classCode}" class="mono"></strong> with your students.</p>
+    </div>
+  </div>
+
+  <!-- Attendance Sessions History -->
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <h2>Attendance Sessions History</h2>
+        <span style="font-size: 13px; color: var(--ink-muted);">Past attendance logs recorded for this class.</span>
+      </div>
+    </div>
+    
+    <div class="table-container" th:unless="${#lists.isEmpty(sessions)}">
+      <table>
+        <thead>
+          <tr>
+            <th>Session Date &amp; Time</th>
+            <th class="text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="s : ${sessions}">
+            <td class="mono" th:text="${#temporals.format(s.sessionTime, 'dd MMM yyyy, hh:mm a')}">Date</td>
+            <td class="text-right">
+              <a th:href="@{'/admin/class/' + ${classRoom.id} + '/session/' + ${s.id}}" class="btn btn-outline btn-sm">View Session Record &rarr;</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${#lists.isEmpty(sessions)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h3>No attendance taken yet</h3>
+      <p>Use "Take Attendance Scan" to launch camera recognition and log attendance.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function filterRoster(type) {
+    const rows = document.querySelectorAll('.roster-row');
+    const allBtn = document.getElementById('filterAllBtn');
+    const atRiskBtn = document.getElementById('filterAtRiskBtn');
+
+    if (type === 'at-risk') {
+      rows.forEach(row => {
+        row.style.display = (row.getAttribute('data-atrisk') === 'true') ? '' : 'none';
+      });
+      allBtn.className = 'btn btn-outline btn-sm';
+      atRiskBtn.className = 'btn btn-primary btn-sm';
+    } else {
+      rows.forEach(row => row.style.display = '');
+      allBtn.className = 'btn btn-primary btn-sm';
+      atRiskBtn.className = 'btn btn-outline btn-sm';
+    }
+  }
+</script>
+</body>
+</html>

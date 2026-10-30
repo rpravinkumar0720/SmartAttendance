@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Take Attendance | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script th:src="@{/js/face-utils.js}"></script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1 th:text="'Take Attendance — ' + ${classRoom.className}">Take Attendance</h1>
+        <span class="brand-subtitle" th:text="${classRoom.subject}">Subject</span>
+      </div>
+    </div>
+    <a th:href="@{'/admin/class/' + ${classRoom.id}}" class="btn btn-outline btn-sm">&larr; Back to Class</a>
+  </div>
+
+  <div class="glass card" style="max-width: 720px; margin: 0 auto; text-align: center;">
+    <div class="eyebrow">Real-Time Facial Recognition</div>
+    <h2 style="margin-top: 4px;">Live Attendance Scanner</h2>
+    <p class="subtitle" style="max-width: 58ch; margin: 8px auto 20px;">
+      Point the camera at the classroom. Students detected with a registered face match will be automatically marked <strong>Present</strong>; all others will remain <strong>Absent</strong>.
+    </p>
+
+    <div class="camera-box">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <p id="status" class="status-text" style="font-size: 14px; font-weight: 500; color: var(--ink-secondary);">
+      Initializing camera &amp; neural models...
+    </p>
+
+    <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <button id="startBtn" class="btn btn-primary" disabled>Start Scanning</button>
+      <button id="saveBtn" class="btn btn-danger" style="display: none;">Finish &amp; Save Attendance</button>
+    </div>
+
+    <div style="margin-top: 32px; border-top: 1px solid var(--border-glass); padding-top: 24px; text-align: left;">
+      <div class="section-head" style="margin-bottom: 12px;">
+        <h3 style="margin: 0; font-size: 15.5px;">
+          Recognized Students (<span id="recognizedCount" class="mono" style="color: var(--mint);">0</span>)
+        </h3>
+      </div>
+      <div id="recognizedList" class="recognized-list" style="justify-content: flex-start;"></div>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  const classId = /*[[${classRoom.id}]]*/ 0;
+
+  const video = document.getElementById("video");
+  const overlay = document.getElementById("overlay");
+  const statusEl = document.getElementById("status");
+  const startBtn = document.getElementById("startBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const recognizedListEl = document.getElementById("recognizedList");
+  const recognizedCountEl = document.getElementById("recognizedCount");
+
+  const COLOR_MATCH = "#2dd4bf";
+  const COLOR_UNKNOWN = "#fb7185";
+
+  let knownStudents = [];
+  let recognizedMap = new Map(); // studentId -> {fullName, rollNumber, distance}
+  let hitCounts = new Map(); // studentId -> consecutive/cumulative confident-match count
+  let sessionId = null;
+  let scanning = false;
+  let scanTimer = null;
+
+  // A student is only confirmed PRESENT after being confidently matched this many times.
+  const CONFIRM_HITS = 2;
+
+  (async function init() {
+    try {
+      await loadFaceModels(statusEl);
+      await startCamera(video);
+      overlay.width = video.videoWidth;
+      overlay.height = video.videoHeight;
+
+      const resp = await fetch(`/api/class/${classId}/face-data`);
+      knownStudents = await resp.json();
+
+      if (knownStudents.length === 0) {
+        statusEl.textContent = "No students have enrolled their face yet in this class. Enroll faces first from the class roster.";
+        return;
+      }
+
+      statusEl.textContent = `Ready! ${knownStudents.length} enrolled student profile(s) loaded. Click Start Scanning.`;
+      startBtn.disabled = false;
+    } catch (err) {
+      statusEl.textContent = "Setup failed: " + err.message;
+    }
+  })();
+
+  startBtn.addEventListener("click", async () => {
+    const resp = await fetch(`/api/class/${classId}/session/start`, { 
+      method: "POST",
+      headers: getCSRFHeaders()
+    });
+    const data = await resp.json();
+    sessionId = data.sessionId;
+
+    scanning = true;
+    startBtn.style.display = "none";
+    saveBtn.style.display = "inline-flex";
+    statusEl.textContent = "Scanning active... panning camera across students.";
+    scanLoop();
+  });
+
+  async function scanLoop() {
+    if (!scanning) return;
+    const detections = await detectAllFaces(video);
+
+    const ctx = overlay.getContext("2d");
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    for (const det of detections) {
+      const box = det.detection.box;
+      const match = matchDescriptor(det.descriptor, knownStudents);
+
+      ctx.strokeStyle = match ? COLOR_MATCH : COLOR_UNKNOWN;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      ctx.fillStyle = match ? COLOR_MATCH : COLOR_UNKNOWN;
+      ctx.font = "bold 13px sans-serif";
+
+      if (match) {
+        const sid = match.student.studentId;
+        const hits = (hitCounts.get(sid) || 0) + 1;
+        hitCounts.set(sid, hits);
+
+        if (hits >= CONFIRM_HITS && !recognizedMap.has(sid)) {
+          recognizedMap.set(sid, {
+            fullName: match.student.fullName,
+            rollNumber: match.student.rollNumber,
+            distance: match.distance
+          });
+          renderRecognized();
+        }
+
+        const label = recognizedMap.has(sid) ? `✓ ${match.student.fullName}` : `${match.student.fullName} (confirming...)`;
+        ctx.fillText(label, box.x, box.y - 6);
+      } else {
+        ctx.fillText("Unknown", box.x, box.y - 6);
+      }
+    }
+
+    scanTimer = setTimeout(scanLoop, 700);
+  }
+
+  function renderRecognized() {
+    recognizedCountEl.textContent = recognizedMap.size;
+    recognizedListEl.innerHTML = "";
+    recognizedMap.forEach((info) => {
+      const chip = document.createElement("div");
+      chip.className = "recognized-chip";
+      chip.textContent = `✓ ${info.fullName} (${info.rollNumber})`;
+      recognizedListEl.appendChild(chip);
+    });
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    scanning = false;
+    clearTimeout(scanTimer);
+    saveBtn.disabled = true;
+    statusEl.textContent = "Finalizing and saving attendance records...";
+
+    const recognized = Array.from(recognizedMap.entries()).map(([studentId, info]) => ({
+      studentId: studentId,
+      distance: info.distance
+    }));
+
+    const resp = await fetch("/api/attendance/finalize", {
+      method: "POST",
+      headers: getCSRFHeaders(),
+      body: JSON.stringify({ sessionId: sessionId, recognized: recognized })
+    });
+
+    if (resp.ok) {
+      stopCamera(video);
+      window.location.href = `/admin/class/${classId}/session/${sessionId}`;
+    } else {
+      statusEl.textContent = "Failed to save attendance. Please try again.";
+      saveBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

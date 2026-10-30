@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Class | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Create Class</h1>
+        <span class="brand-subtitle">New Classroom Setup</span>
+      </div>
+    </div>
+    <a th:href="@{/admin/dashboard}" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+  </div>
+
+  <div class="glass card form-card">
+    <span class="eyebrow">Class Details</span>
+    <h2>Set Up a New Class</h2>
+    <p class="subtitle">A unique 6-character class join code will be generated automatically upon creation.</p>
+
+    <form th:action="@{/admin/class/create}" method="post">
+      <label for="className">Class / Batch Name</label>
+      <input type="text" id="className" name="className" placeholder="e.g. III CSE - A" required autofocus>
+
+      <label for="subject">Course / Subject Name</label>
+      <input type="text" id="subject" name="subject" placeholder="e.g. Data Structures &amp; Algorithms" required>
+
+      <button type="submit" class="btn btn-primary btn-block">Create Class</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

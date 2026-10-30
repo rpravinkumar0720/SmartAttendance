@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Enroll My Face | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="_csrf" th:content="${_csrf.token}"/>
+  <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script th:src="@{/js/face-utils.js}"></script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Enroll My Face</h1>
+        <span class="brand-subtitle">Self-Service Facial Registration</span>
+      </div>
+    </div>
+    <a th:href="@{/student/dashboard}" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+  </div>
+
+  <div class="glass card" style="max-width: 680px; margin: 0 auto; text-align: center;">
+    <div class="eyebrow">Biometric Self-Enrollment</div>
+    <h2 style="margin-top: 4px;">5-Angle Multi-Pose Capture</h2>
+    <p class="subtitle" style="max-width: 54ch; margin: 8px auto 20px;">
+      Sit in good, even lighting and face the camera directly. We will capture <strong>5 distinct angles</strong> with real-time liveness verification.
+    </p>
+
+    <div class="camera-box">
+      <video id="video" autoplay muted playsinline></video>
+    </div>
+
+    <!-- Progress Bar -->
+    <div style="margin-top: 20px;">
+      <div class="progress-bar">
+        <div id="captureProgress" class="progress-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Dynamic Instruction Box -->
+    <div class="pose-instruction-box">
+      <span style="font-size: 13px; color: var(--ink-muted);">Current Angle Prompt:</span>
+      <span id="captureLabel" class="mono">Look straight at the camera</span>
+    </div>
+
+    <p id="status" class="status-text" style="margin-top: 4px; font-weight: 500;">
+      Initializing camera &amp; neural models...
+    </p>
+
+    <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <button id="captureBtn" class="btn btn-primary" disabled>Capture Shot 1 of 5</button>
+      <button id="retryBtn" class="btn btn-outline" style="display: none;">Start Over</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const video = document.getElementById("video");
+  const statusEl = document.getElementById("status");
+  const captureBtn = document.getElementById("captureBtn");
+  const retryBtn = document.getElementById("retryBtn");
+  const progressEl = document.getElementById("captureProgress");
+  const captureLabelEl = document.getElementById("captureLabel");
+
+  const POSE_PROMPTS = [
+    "Look straight at the camera",
+    "Turn your head slightly LEFT",
+    "Turn your head slightly RIGHT",
+    "Tilt your chin slightly UP",
+    "Tilt your chin slightly DOWN"
+  ];
+  const TOTAL_SHOTS = POSE_PROMPTS.length;
+
+  let capturedDescriptors = [];
+  let firstPhotoBase64 = null;
+
+  (async function init() {
+    try {
+      await loadFaceModels(statusEl);
+      await startCamera(video);
+      statusEl.textContent = "Camera ready! Position your face in the center.";
+      captureLabelEl.textContent = POSE_PROMPTS[0];
+      captureBtn.disabled = false;
+    } catch (err) {
+      statusEl.textContent = "Could not access camera or load models: " + err.message;
+    }
+  })();
+
+  captureBtn.addEventListener("click", async () => {
+    captureBtn.disabled = true;
+    statusEl.textContent = "Detecting facial landmarks & checking liveness...";
+    const detection = await detectSingleFace(video);
+    if (!detection) {
+      statusEl.textContent = "No clear face detected — move closer to the light and try again.";
+      captureBtn.disabled = false;
+      return;
+    }
+
+    capturedDescriptors.push(Array.from(detection.descriptor));
+    if (!firstPhotoBase64) firstPhotoBase64 = captureSnapshot(video);
+
+    const shotNum = capturedDescriptors.length;
+    progressEl.style.width = Math.round((shotNum / TOTAL_SHOTS) * 100) + "%";
+
+    if (shotNum < TOTAL_SHOTS) {
+      statusEl.textContent = `Shot ${shotNum} of ${TOTAL_SHOTS} captured (Liveness Verified ✓)`;
+      captureLabelEl.textContent = POSE_PROMPTS[shotNum];
+      captureBtn.textContent = `Capture Shot ${shotNum + 1} of ${TOTAL_SHOTS}`;
+      captureBtn.disabled = false;
+      return;
+    }
+
+    statusEl.textContent = "Computing neural face descriptor & saving enrollment...";
+    captureLabelEl.textContent = "Enrollment Complete";
+    const averaged = averageDescriptors(capturedDescriptors);
+
+    const resp = await fetch("/api/face/enroll-self", {
+      method: "POST",
+      headers: getCSRFHeaders(),
+      body: JSON.stringify({
+        descriptor: JSON.stringify(averaged),
+        photoBase64: firstPhotoBase64
+      })
+    });
+
+    if (resp.ok) {
+      statusEl.textContent = "Face enrolled successfully from 5 angles! Redirecting to dashboard...";
+      stopCamera(video);
+      setTimeout(() => { window.location.href = "/student/dashboard"; }, 1200);
+    } else {
+      statusEl.textContent = "Failed to save enrollment. Please try again.";
+      retryBtn.style.display = "inline-flex";
+    }
+  });
+
+  retryBtn.addEventListener("click", () => {
+    capturedDescriptors = [];
+    firstPhotoBase64 = null;
+    progressEl.style.width = "0%";
+    captureLabelEl.textContent = POSE_PROMPTS[0];
+    captureBtn.textContent = "Capture Shot 1 of 5";
+    captureBtn.disabled = false;
+    retryBtn.style.display = "none";
+    statusEl.textContent = "Camera ready.";
+  });
+</script>
+</body>
+</html>

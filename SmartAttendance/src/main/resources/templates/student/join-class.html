@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Join a Class | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1>Join a Class</h1>
+        <span class="brand-subtitle">Submit Classroom Join Code</span>
+      </div>
+    </div>
+    <a th:href="@{/student/dashboard}" class="btn btn-outline btn-sm">&larr; Back to Dashboard</a>
+  </div>
+
+  <div class="glass card form-card" style="max-width: 540px;">
+    <div class="error-msg" th:if="${error}" th:text="${error}"></div>
+    <div class="success-msg" th:if="${success}" th:text="${success}"></div>
+
+    <span class="eyebrow">Class Access</span>
+    <h2>Enter Class Join Code</h2>
+    <p class="subtitle">Enter the 6-character code provided by your course instructor.</p>
+
+    <form th:action="@{/student/join-class}" method="post">
+      <label for="classCode">Class Code</label>
+      <input type="text" id="classCode" name="classCode" placeholder="e.g. CSE23A1" required autofocus
+             style="font-family: var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; font-size: 16px; font-weight: 600;" maxlength="10">
+
+      <div th:if="${student.rollNumber == null or #strings.isEmpty(student.rollNumber)}">
+        <label for="rollNumber">Your Roll Number</label>
+        <input type="text" id="rollNumber" name="rollNumber" placeholder="e.g. 21CSE045" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block">Send Join Request</button>
+    </form>
+  </div>
+
+  <div class="glass card" style="max-width: 540px; margin: 24px auto 0;">
+    <div class="section-head">
+      <div>
+        <h3 style="margin: 0; font-size: 16px;">My Sent Requests</h3>
+      </div>
+    </div>
+    
+    <div th:if="${#lists.isEmpty(myRequests)}" class="empty-state" style="padding: 36px 16px;">
+      <svg class="empty-state-icon" style="width: 32px; height: 32px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      <p style="font-size: 13.5px;">You haven't requested to join any classes yet.</p>
+    </div>
+
+    <div class="table-container" th:unless="${#lists.isEmpty(myRequests)}">
+      <table>
+        <thead>
+          <tr>
+            <th>Class Name</th>
+            <th class="text-right">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="r : ${myRequests}">
+            <td th:text="${r.classRoom.className}" style="font-weight: 500;">Class</td>
+            <td class="text-right">
+              <span th:if="${r.status.name() == 'PENDING'}" class="badge badge-pending">Pending Approval</span>
+              <span th:if="${r.status.name() == 'APPROVED'}" class="badge badge-present">Approved</span>
+              <span th:if="${r.status.name() == 'REJECTED'}" class="badge badge-absent">Rejected</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

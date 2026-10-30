@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Session Detail | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1 th:text="${classRoom.className} + ' — Session Log'">Session Log</h1>
+        <span class="brand-subtitle mono" th:text="${#temporals.format(session.sessionTime, 'dd MMMM yyyy, hh:mm a')}">Date</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <a th:href="@{'/admin/class/' + ${classRoom.id} + '/session/' + ${session.id} + '/export/csv'}" class="btn btn-outline btn-sm">
+        📥 Export Session CSV
+      </a>
+      <a th:href="@{'/admin/class/' + ${classRoom.id}}" class="btn btn-outline btn-sm">&larr; Back to Class</a>
+    </div>
+  </div>
+
+  <div class="glass card">
+    <div class="section-head">
+      <div>
+        <h2>Attendance Record</h2>
+        <span style="font-size: 13.5px; color: var(--ink-muted);">Verified camera scan results with manual override capabilities.</span>
+      </div>
+      <div th:if="${param.overridden}" class="badge badge-approved" style="font-size: 13px;">
+        ✓ Status updated successfully
+      </div>
+    </div>
+
+    <div class="table-container" th:unless="${#lists.isEmpty(records)}">
+      <table>
+        <thead>
+          <tr>
+            <th>Student Name</th>
+            <th>Roll Number</th>
+            <th>Attendance Status</th>
+            <th>Confidence Distance</th>
+            <th class="text-right">Manual Override</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="r : ${records}">
+            <td th:text="${r.student.fullName}" style="font-weight: 500;">Name</td>
+            <td class="mono" th:text="${r.student.rollNumber}">Roll</td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span th:if="${r.status.name() == 'PRESENT'}" class="badge badge-present">Present</span>
+                <span th:if="${r.status.name() == 'ABSENT'}" class="badge badge-absent">Absent</span>
+                <span th:if="${r.isOverridden}" class="badge badge-pending" style="font-size: 11px;" th:title="${r.overrideReason}">
+                  Edited
+                </span>
+              </div>
+              <div th:if="${r.isOverridden and r.overrideReason != null and !#strings.isEmpty(r.overrideReason)}" 
+                   style="font-size: 11.5px; color: var(--ink-muted); margin-top: 4px;" 
+                   th:text="'Reason: ' + ${r.overrideReason}">
+              </div>
+            </td>
+            <td class="mono" th:text="${r.matchDistance != null ? #numbers.formatDecimal(r.matchDistance, 1, 3) : '—'}">—</td>
+            <td class="text-right">
+              <details style="display: inline-block; text-align: left; position: relative;">
+                <summary class="btn btn-outline btn-sm" style="list-style: none; cursor: pointer;">
+                  ✏️ Edit
+                </summary>
+                <div style="position: absolute; right: 0; top: 100%; margin-top: 6px; z-index: 10; width: 260px; background: var(--surface-raised); border: 1px solid var(--border-glass-bright); border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-raised);">
+                  <form th:action="@{'/admin/class/' + ${classRoom.id} + '/session/' + ${session.id} + '/record/' + ${r.id} + '/override'}" method="post">
+                    <label style="margin-top: 0; font-size: 11px;">Set Status</label>
+                    <select name="status" style="padding: 6px 10px; font-size: 13px; margin-bottom: 8px;">
+                      <option value="PRESENT" th:selected="${r.status.name() == 'PRESENT'}">Present</option>
+                      <option value="ABSENT" th:selected="${r.status.name() == 'ABSENT'}">Absent</option>
+                    </select>
+
+                    <label style="font-size: 11px; margin-top: 4px;">Reason for change</label>
+                    <input type="text" name="reason" placeholder="e.g. Camera missed student" style="padding: 6px 10px; font-size: 12.5px; margin-bottom: 10px;" required>
+
+                    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                      <button type="submit" class="btn btn-primary btn-sm" style="padding: 5px 12px; font-size: 12px;">Save</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div th:if="${#lists.isEmpty(records)}" class="empty-state">
+      <svg class="empty-state-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <h3>No records for this session</h3>
+      <p>No student records were stored for this session.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

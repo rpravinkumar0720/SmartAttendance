@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Attendance | Verify OTP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+  <div class="center-screen">
+    <div class="glass auth-standalone">
+      <div class="brand" style="margin-bottom:12px;">
+        <div class="logo">SA</div>
+        <div>
+          <h1>Smart Attendance</h1>
+          <span class="brand-subtitle">Email Verification</span>
+        </div>
+      </div>
+      <span class="eyebrow" style="margin-top:12px;">Security Verification</span>
+      <p class="subtitle">
+        <span th:if="${mode == 'signup'}">Verify your email address to activate your account.</span>
+        <span th:unless="${mode == 'signup'}">Enter the 6-digit OTP code sent to your email.</span>
+      </p>
+
+      <div class="error-msg" th:if="${error}" th:text="${error}"></div>
+      <div class="success-msg" th:if="${success}" th:text="${success}"></div>
+
+      <div style="background: var(--surface-sunken); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 20px; text-align: center;">
+        <span style="font-size: 13px; color: var(--ink-muted);">Code sent to:</span>
+        <div class="mono" style="font-size: 14px; font-weight: 600; color: var(--primary-light); margin-top: 2px;" th:text="${email}">you@college.edu</div>
+      </div>
+
+      <form th:if="${mode == 'signup'}" th:action="@{/verify-signup-otp}" method="post">
+        <label for="otp">6-Digit OTP</label>
+        <input type="text" id="otp" name="otp" placeholder="123456" maxlength="6" inputmode="numeric" required autofocus
+               style="font-family: var(--font-mono); letter-spacing: 0.35em; text-align: center; font-size: 20px; font-weight: 600;">
+        <button type="submit" class="btn btn-primary btn-block">Verify &amp; Activate</button>
+      </form>
+      <form th:unless="${mode == 'signup'}" th:action="@{/verify-otp}" method="post">
+        <label for="otp">6-Digit OTP</label>
+        <input type="text" id="otp" name="otp" placeholder="123456" maxlength="6" inputmode="numeric" required autofocus
+               style="font-family: var(--font-mono); letter-spacing: 0.35em; text-align: center; font-size: 20px; font-weight: 600;">
+        <button type="submit" class="btn btn-primary btn-block">Verify Code</button>
+      </form>
+
+      <form th:if="${mode == 'signup'}" th:action="@{/resend-signup-otp}" method="post" style="margin-top:12px;">
+        <button type="submit" class="btn btn-outline btn-block">Resend OTP</button>
+      </form>
+      <form th:unless="${mode == 'signup'}" th:action="@{/resend-otp}" method="post" style="margin-top:12px;">
+        <button type="submit" class="btn btn-outline btn-block">Resend OTP</button>
+      </form>
+
+      <p class="status-text"><a th:href="@{/login}">Back to sign in</a></p>
+    </div>
+  </div>
+</body>
+</html>

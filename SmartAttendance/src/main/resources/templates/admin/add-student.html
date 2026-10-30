@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Student | Smart Attendance</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="wrapper">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SA</div>
+      <div>
+        <h1 th:text="'Add Student — ' + ${classRoom.className}">Add Student</h1>
+        <span class="brand-subtitle" th:text="${classRoom.subject}">Subject</span>
+      </div>
+    </div>
+    <a th:href="@{'/admin/class/' + ${classRoom.id}}" class="btn btn-outline btn-sm">&larr; Back to Class</a>
+  </div>
+
+  <div class="glass card form-card" style="max-width: 580px;">
+    <span class="eyebrow">Roster Enrollment</span>
+    <h2>Add Student to Class</h2>
+    <p class="subtitle">Directly register a student into this class roster.</p>
+
+    <form th:action="@{'/admin/class/' + ${classRoom.id} + '/add-student'}" method="post">
+      <label for="fullName">Student Full Name</label>
+      <input type="text" id="fullName" name="fullName" placeholder="e.g. Jane Doe" required autofocus>
+
+      <div class="form-row">
+        <div>
+          <label for="rollNumber">Roll Number</label>
+          <input type="text" id="rollNumber" name="rollNumber" placeholder="e.g. 21CSE045" required>
+        </div>
+        <div>
+          <label for="email">College Email Address</label>
+          <input type="email" id="email" name="email" placeholder="student@college.edu" required>
+        </div>
+      </div>
+
+      <label for="password">Account Password (Optional)</label>
+      <input type="text" id="password" name="password" placeholder="Defaults to Roll Number if left blank">
+
+      <button type="submit" class="btn btn-primary btn-block">Add Student to Roster</button>
+    </form>
+    
+    <p class="status-text" style="font-size: 13px; margin-top: 20px;">
+      💡 After adding, click <strong>Enroll Face</strong> on the class page to scan and register their facial biometric profile.
+    </p>
+  </div>
+</div>
+</body>
+</html>
